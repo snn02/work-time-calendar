@@ -22,6 +22,7 @@ CATEGORIES = ('продажи','проекты','разработка','встр
 MARKER = '[work-time-calendar]'
 KINDS = ('Агент','Встреча','Работа','Отдых','Простой')
 SOURCE_NAMES = {'codex':'Codex','claude':'Claude','opencode':'OpenCode'}
+EVENT_COLORS = {'Агент':'7','Встреча':'3','Работа':'6','Отдых':'10','Простой':'8'}
 
 
 def validate_entry(entry):
@@ -68,7 +69,10 @@ def to_event(entry):
     desc=e['description'] or e['action'].rstrip('.!?')+'.'
     detail=e['project'] if e['kind']=='Агент' else e.get('title_detail') or e['action']
     display=f"Описание: {desc}\nПроект: {e['project']}\nКатегория: {e['category'].capitalize()}\nИсточник: {', '.join(e['source_labels'])}"
-    return {'id':'tc'+e['key'],'summary':redact(f"{e['kind']}: {detail}"),
+    color_kind = ('Отдых' if e['kind']=='Отдых' else 'Простой' if e['kind']=='Простой'
+                  else 'Встреча' if e['kind']=='Встреча' or e['category'] in ('общение','встреча внутренняя','встреча с клиентом')
+                  else e['kind'])
+    return {'colorId':EVENT_COLORS[color_kind], 'id':'tc'+e['key'],'summary':redact(f"{e['kind']}: {detail}"),
             'description':display,
             'start':{'dateTime':e['start']},'end':{'dateTime':e['end']},
             'extendedProperties':{'private':{'wt_key':e['key'],'wt_meta':encoded}}, 'reminders':{'useDefault':False}}
