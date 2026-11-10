@@ -62,21 +62,20 @@ def main(argv=None):
     elif args.command=='prepare':
         entries=read_json(args.entries)
         if isinstance(entries,dict): entries=entries['entries']
-        result={'calendar_id':CALENDAR_ID,'events':[to_event(validate_entry(e)) for e in entries]}
+        result={'events':[to_event(validate_entry(e)) for e in entries]}
     elif args.command=='reconcile':
         entries=read_json(args.entries)
         events=read_json(args.events)
         result=reconcile(entries.get('entries',[]) if isinstance(entries,dict) else entries,
                          events.get('items',[]) if isinstance(events,dict) else events)
-        result['calendar_id']=CALENDAR_ID
     elif args.command=='report':
         start,end=date_range(args); events=read_json(args.events)
         result=report(events.get('items',[]) if isinstance(events,dict) else events,start,end)
     elif args.command=='verify':
         result={'verified':verify_event(read_json(args.expected),read_json(args.observed))}
     else:
-        result={'python':sys.version.split()[0],'calendar_id':CALENDAR_ID,'timezone':str(MOSCOW),
-                'calendar_transport':'host Google Calendar connector (not authenticated or probed by this offline helper)',
+        result={'python':sys.version.split()[0],'timezone':str(MOSCOW),
+                'calendar_transport':'selected separately via calendar_profile.py; connectivity not checked',
                 'history_home':str(Path.home()),'gws_required':False}
     body=json.dumps(result,ensure_ascii=False,indent=2)
     if getattr(args,'output',None):
