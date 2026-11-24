@@ -21,7 +21,7 @@ except ZoneInfoNotFoundError:
 CATEGORIES = ('продажи','проекты','разработка','встреча внутренняя','встреча с клиентом','общение','отдых','простой')
 MARKER = '[work-time-calendar]'
 KINDS = ('Агент','Встреча','Работа','Отдых','Простой')
-SOURCE_NAMES = {'codex':'Codex','claude':'Claude','opencode':'OpenCode'}
+SOURCE_NAMES = {'codex':'Codex','claude':'Claude','opencode':'OpenCode','chatgpt':'ChatGPT'}
 EVENT_COLORS = {'Агент':'7','Встреча':'3','Работа':'6','Отдых':'10','Простой':'8'}
 
 
@@ -173,9 +173,11 @@ def reconcile(entries,events):
                           and event.get('summary')==expected['summary']
                           and human_description(event)==human_description(expected))
             manual_match=event.get('id') in e.get('calendar_matches',[])
+            cloud_overlap=(m.get('project')==e['project'] and
+                           any(s.startswith('chatgpt:') for s in e['sources']+(m.get('sources') or [])))
             if same_key or same_source or same_display or manual_match:
                 covered.append((a,b))
-            elif (not m or (m.get('project')==e['project'] and not m.get('sources'))) and event.get('id') not in e.get('distinct_event_ids',[]):
+            elif (not m or (m.get('project')==e['project'] and not m.get('sources')) or cloud_overlap) and event.get('id') not in e.get('distinct_event_ids',[]):
                 ambiguous.append({'id':event.get('id'),'summary':event.get('summary',''),'start':a.isoformat(),'end':b.isoformat()})
         # Known source coverage resolves the fact even with unrelated manual overlaps.
         pieces=subtract(start,end,covered)
@@ -183,7 +185,7 @@ def reconcile(entries,events):
             result['already'].append({'key':e['key'],'project':e['project']})
             continue
         if ambiguous:
-            result['review'].append({'entry':e,'reason':'classify overlapping unmarked events as same fact or independent work','events':ambiguous})
+            result['review'].append({'entry':e,'reason':'classify overlapping events as same fact or independent work','events':ambiguous})
             continue
         if covered:
             result['already'].append({'key':e['key'],'project':e['project'],'partial':True})

@@ -194,5 +194,7 @@ def collect(start, end, home=None, roots=None):
         s['first_message'] = s['messages'][0]['timestamp']
         s['last_message'] = s['messages'][-1]['timestamp']
         s['user_messages'] = sum(m['role']=='user' for m in s['messages'])
-    return {'start':start.isoformat(),'end':end.isoformat(),'complete':all(x['status']=='ok' for x in coverage),
+    return {'start':start.isoformat(),'end':end.isoformat(),'scope':'local_histories',
+            'pending_sources':[{'agent':'chatgpt','status':'not_collected','transport':'host_tools'}],
+            'complete':all(x['status']=='ok' for x in coverage),
             'coverage':coverage,'errors':errors,'sessions':sorted(sessions,key=lambda s:s['first_message'])}

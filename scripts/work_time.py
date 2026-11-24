@@ -1,4 +1,4 @@
-"""Optional local helper. Google actions are performed by the host's connector."""
+"""Local histories and fact helpers. ChatGPT history needs host tools; calendars use their connector."""
 import argparse
 import json
 import os
@@ -31,7 +31,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
     for name in ('collect','report'):
-        p=sub.add_parser(name)
+        p=sub.add_parser(name, help='local Codex/Claude/OpenCode histories; ChatGPT is a separate host-tool step' if name=='collect' else 'report calendar time')
         p.add_argument('--date',default='today',help='today or YYYY-MM-DD (configured timezone)')
         p.add_argument('--from',dest='start',help='ISO timestamp including offset')
         p.add_argument('--to',dest='end',help='ISO timestamp including offset')
