@@ -18,11 +18,11 @@ except ZoneInfoNotFoundError:
     if _zone != 'Europe/Moscow':
         raise ValueError('Timezone database unavailable; install tzdata or set WORK_TIME_TIMEZONE to a valid IANA name')
     MOSCOW = timezone(timedelta(hours=3), 'Europe/Moscow')
-CATEGORIES = ('продажи','проекты','разработка','встреча внутренняя','встреча с клиентом','общение','отдых','простой')
+CATEGORIES = ('продажи','проекты','разработка','встреча внутренняя','встреча с клиентом','общение','отдых','простой','дорога')
 MARKER = '[work-time-calendar]'
-KINDS = ('Агент','Встреча','Работа','Отдых','Простой')
+KINDS = ('Агент','Встреча','Работа','Отдых','Простой','Дорога')
 SOURCE_NAMES = {'codex':'Codex','claude':'Claude','opencode':'OpenCode','chatgpt':'ChatGPT'}
-EVENT_COLORS = {'Агент':'7','Встреча':'3','Работа':'6','Отдых':'10','Простой':'8'}
+EVENT_COLORS = {'Агент':'7','Встреча':'3','Работа':'6','Отдых':'10','Простой':'8','Дорога':'5'}
 
 
 def validate_entry(entry):
@@ -47,14 +47,17 @@ def validate_entry(entry):
         if not isinstance(e.get(key,[]),list) or any(not isinstance(i,str) for i in e.get(key,[])):
             raise ValueError('invalid '+key)
     e.update(start=start.isoformat(),end=end.isoformat(),sources=sorted(set(sources)))
-    default_kind=('Отдых' if e['category']=='отдых' else 'Простой' if e['category']=='простой'
+    default_kind=('Дорога' if e['category']=='дорога' else 'Отдых' if e['category']=='отдых' else 'Простой' if e['category']=='простой'
                   else 'Встреча' if e['category'].startswith('встреча') else 'Агент' if sources else 'Работа')
     e['kind']=e.get('kind') or default_kind
     if e['kind'] not in KINDS: raise ValueError('unknown activity kind')
+    if e['kind']=='Дорога':
+        e['category']='дорога' if e['project'].casefold()=='не указан' else 'проекты'
     labels=e.get('source_labels') or sorted({SOURCE_NAMES.get(s.split(':',1)[0],s.split(':',1)[0]) for s in sources})
     e['source_labels']=labels or ['Пользователь']
     e['description']=redact(e.get('description',''))
     identity = [e['start'],e['end'],e['project'],e['sources'] or e['action'].casefold()]
+    if e['kind']=='Дорога': identity.append(e['kind'])
     e['key']=hashlib.sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     return e
 
@@ -166,8 +169,10 @@ def reconcile(entries,events):
             a,b=span
             if b<=start or a>=end: continue
             m=identity_metadata(event)
-            same_source=bool(set(e['sources']) & set(m.get('sources',[]))) and m.get('project')==e['project']
-            same_key=m.get('key')==e['key'] or (event.get('extendedProperties',{}).get('private',{}).get('wt_key')==e['key'])
+            shared_source=bool(set(e['sources']) & set(m.get('sources',[]))) and m.get('project')==e['project']
+            travel_conflict=(shared_source and 'Дорога' in (e['kind'],m.get('kind')) and e['kind']!=m.get('kind'))
+            same_source=shared_source and not travel_conflict
+            same_key=(m.get('key')==e['key'] or (event.get('extendedProperties',{}).get('private',{}).get('wt_key')==e['key'])) and not travel_conflict
             expected=to_event(e)
             same_display=(not m.get('sources') and metadata(event)==metadata(expected)
                           and event.get('summary')==expected['summary']
@@ -177,7 +182,7 @@ def reconcile(entries,events):
                            any(s.startswith('chatgpt:') for s in e['sources']+(m.get('sources') or [])))
             if same_key or same_source or same_display or manual_match:
                 covered.append((a,b))
-            elif (not m or (m.get('project')==e['project'] and not m.get('sources')) or cloud_overlap) and event.get('id') not in e.get('distinct_event_ids',[]):
+            elif (not m or (m.get('project')==e['project'] and not m.get('sources')) or cloud_overlap or travel_conflict) and event.get('id') not in e.get('distinct_event_ids',[]):
                 ambiguous.append({'id':event.get('id'),'summary':event.get('summary',''),'start':a.isoformat(),'end':b.isoformat()})
         # Known source coverage resolves the fact even with unrelated manual overlaps.
         pieces=subtract(start,end,covered)

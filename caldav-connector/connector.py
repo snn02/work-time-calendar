@@ -10,7 +10,7 @@ from win32ctypes.pywin32 import win32cred
 class ConnectorError(Exception):pass
 
 # RFC 7986 COLOR uses CSS3 names; approximate Google event colors.
-CALDAV_COLORS={'7':'turquoise','3':'plum','6':'sandybrown','10':'limegreen','8':'lightgray'}
+CALDAV_COLORS={'7':'turquoise','3':'plum','6':'sandybrown','10':'limegreen','8':'lightgray','5':'gold'}
 
 def event_color(event):
     cid=event.get('colorId')
